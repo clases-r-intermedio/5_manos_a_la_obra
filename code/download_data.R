@@ -128,7 +128,7 @@ if ( !dir.exists("data/csv") ) dir.create("data/csv")
 csv_files <- list.files("data", pattern = "csv", recursive = T, full.names = T)
 excel_files <- list.files("data", pattern = " [[:digit:]]{4}.xls", recursive = T, full.names = T)
 
-# Leer todos los archivos csv con fread para asegurarnos de que tengan el mismo separador (fread reconoce el separador)
+# Leer todos los archivos csv con fread para asegurarnos que tengan el mismo separador (fread reconoce el separador)
 csv <- map(csv_files, fread)
 csv_names <-map_chr(csv_files, edit_names)
 walk2(csv, csv_names, ~fwrite(.x, file = paste0("data/csv/", .y), sep = ";"  ))

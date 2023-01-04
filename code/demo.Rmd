@@ -1,0 +1,335 @@
+---
+title: "Manos a la obra"
+output: html_document
+date: '2023-01-03'
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+
+
+```
+
+# Manos a la obra
+
+Esta sesión busca poner en práctica todos los contenidos revisados durante la capacitación. De manera esquemática, las tareas que realizaremos son:
+
+
+- Configurar ambiente de trabajo reproducible
+
+- Descarga de archivos desde página del MINEDUC
+
+- Descompresión de archivos
+
+- Homologación de formatos
+
+- Obtención de estadísticos a partir de los datos descargados
+
+- Visualización de información 
+
+
+
+
+```{r}
+source("code/functions.R")
+library(dplyr)
+library(purrr)
+library(stringr)
+library(ggplot2)
+library(chilemapas)
+library(glue, include.only = c("glue"))
+library(curl, include.only = c("curl_download"))
+library(data.table, include.only = c("fread", "fwrite"))
+library(readxl, include.only = c("read_excel"))
+library(janitor, include.only = c("clean_names"))
+options(scipen = "999")
+
+
+```
+
+
+
+### Tarea 1: Descarga de datos
+
+Estas url contienen los archivos que debemos descargar 
+
+```{r}
+urls <- c("https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/DirectorioOficial1992.rar",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/DirectorioOficial1993.rar",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/DirectorioOficial1994.rar",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/DirectorioOficial1995.rar",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/DirectorioOficial1996.rar",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/DirectorioOficial1997.rar",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/DirectorioOficial1998.zip",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/DirectorioOficial1999.zip",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/DirectorioOficial2000.zip",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/DirectorioOficial2001.zip",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/DirectorioOficial2002.zip",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/DirectorioOficial2003.zip",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/Directorio_oficial_EE_2004.csv",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/Directorio_oficial_EE_2005.csv",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/Directorio_oficial_EE_2006.csv",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/Directorio_oficial_EE_2007.csv",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/Directorio_oficial_EE_2008.csv",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/Directorio_oficial_EE_2009.csv",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/Directorio_oficial_EE_2010.csv",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/Directorio_oficial_EE_2011.csv",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/Directorio_oficial_EE_2012.csv",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/Directorio-oficial-EE-2013.rar",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/Directorio-oficial-EE-2014.rar",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/Directorio-Oficial-EE-2015.rar",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/Directorio-oficial-EE-2016.rar",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/Directorio-oficial-EE-2017.rar",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/Directorio-oficial-EE-2018.rar",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/Directorio-oficial-EE-2019.rar",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/Directorio-oficial-EE-2020.rar",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2021/12/Directorio-oficial-EE-2021.rar",
+"https://datosabiertos.mineduc.cl/wp-content/uploads/2022/09/Directorio-oficial-EE-2022.rar")
+
+```
+
+
+**Tarea 1.1:** Crea un directorio llamado data/bruto, que contendrá los archivos que descargaremos
+
+```{r}
+
+# Crear el directorio para almacenar los datos. Esto es opcional, pero ayuda a reproducir el trabajo. 
+if ( !dir.exists("data") ) dir.create("data")
+if ( !dir.exists("data/bruto") ) dir.create("data/bruto")
+```
+
+
+**Tarea 1.2:** Extrae el nombre de los archivos desde las url y guárdalos en un vector
+```{r}
+# Crear el nombre de los archivos que descargaremos
+file_names <- map_chr(urls, ~str_extract(.x, "Directorio.*")) 
+
+```
+**Tarea 1.3** Descarga los archivos, utilizando los nombres del paso anterior. 
+
+```{r}
+# Descargar datos con función download_data (creada en functions.R) 
+walk2(urls, file_names, ~download_data(url = .x, file_name = .y, relative_path = "data/bruto"))
+
+```
+
+
+### Tarea 2: Descomprimir los archivos
+
+**Tarea 2.1** Guarda en vectores diferentes los nombres de los archivos .zip y .rar. 
+
+```{r}
+# Encontrar los archivos que están comprimidos 
+zip <- list.files("data/bruto/", pattern = "zip", full.names = T)
+rar <- list.files("data/bruto/", pattern = "rar", full.names = T)
+
+
+```
+
+**Tarea 2.2** Descomprimir los archivos. Es muy probable que existan problemas para descomrpimir los archivos .rar 
+
+```{r}
+# Descomprimir archivos zip
+walk(zip, ~unzip(.x, exdir=paste0("data/bruto/", str_extract(.x, pattern = "[[:digit:]]+"))))
+walk(rar, ~unrar_windows(.x))
+
+```
+
+
+
+### Tarea 3: Homologar los formatos
+
+**Tarea 3.1** Crear carpeta para guardar archivos
+
+```{r}
+# Crear carpeta para recibir archivos csv 
+if ( !dir.exists("data/csv") ) dir.create("data/csv")
+
+```
+
+**Tarea 3.2** Guardar las rutas de los archivos csv y excel
+
+
+```{r}
+# Encontrar todos los archivos csv y excel en los datos brutos
+csv_files <- list.files("data", pattern = "csv", recursive = T, full.names = T)
+excel_files <- list.files("data", pattern = " [[:digit:]]{4}.xls", recursive = T, full.names = T)
+
+```
+
+**Tarea 3.3** Leer todos los archivos en formato csv y guardar en csv con separador ";"
+
+```{r}
+# Leer todos los archivos csv con fread para asegurarnos que tengan el mismo separador (fread reconoce el separador)
+csv <- map(csv_files, fread)
+csv_names <-map_chr(csv_files, edit_names)
+walk2(csv, csv_names, ~fwrite(.x, file = paste0("data/csv/", .y), sep = ";"  ))
+
+```
+
+**Tarea 3.4** Leer todos los archivos en formato excel y guardar en csv con separador ";"
+
+
+```{r}
+# Leer todos los archivos excel 
+excel <- map(excel_files, read_excel )
+
+# Editar nombre de archivos
+excel_names <- map_chr(excel_files, edit_names)
+
+# Guardar en carpeta de archivos csv
+walk2(excel, excel_names, ~fwrite(.x, file = paste0("data/csv/", .y), sep = ";"  ))
+
+```
+
+### Tarea 4: Limpieza básica de columnas
+
+**Tarea 4.1**: Usar clean_names de janitor, para editar nombres de columnas
+
+```{r}
+# Limpieza básica de nombre de columnas (función anónima)
+clean_csv <- map(list.files("data/csv", full.names = T), function(x) {clean_names(fread(x))  }  )
+
+# Archivos csv con una limpieza básica de columnas. 
+# Requiere homologar columnas y otras cosas
+walk2(clean_csv, list.files("data/csv", full.names = T), ~fwrite(x = .x, file = .y, sep = ";"))
+
+```
+
+
+
+
+### Tarea 5: Identificar los colegios que están presentes en todos los años
+
+
+**Tarea 5.1** Leer archivos csv y seleccionar las 3 primeras columnas de cada tabla (identificadores)
+
+```{r}
+# Cargar todos los datos
+clean_csv <- map(list.files("data/csv", full.names = T), fread, dec = ","     )
+
+# Seleccionar columnas relevantes
+rbd_data <- map(clean_csv, ~.x %>% 
+                  select(1:3))  
+
+
+```
+
+**Tarea 5.2** Homologar los nombres de las columnas 
+
+
+```{r}
+# Homologar nombres del identificador
+rbd_data2 <- rbd_data %>% 
+  map(create_new_names) %>% 
+  map(~.x %>%
+        select(rbd_n, rbd_d) %>%
+        mutate(id = paste(rbd_n, rbd_d, sep = "-")) %>% 
+        distinct()
+        )
+
+```
+
+
+**Tarea 5.3** Seleccionar los colegios que están en todos los años
+
+```{r}
+all_years <- rbd_data2 %>%
+  map(~.x %>% select(id) ) %>% 
+  reduce(inner_join, by = "id")
+
+```
+
+### Tarea 6: Visualización de colegios de la RM
+
+**Tarea 6.1** Seleccionar datos de 2021 
+
+```{r}
+anio_2021 <- clean_csv[[31]]
+
+```
+
+**Tarea 6.2** Conseguir los polígonos de la región metropolitana, usando el paquete [chilemapas](https://pacha.dev/chilemapas/articles/chilemapas.html)
+
+```{r}
+mapa_rm <- mapa_comunas %>% 
+  filter(codigo_region == 13) 
+```
+
+
+**Tarea 6.3** Filtrar en nuestros datos las coordenadas de los colegios de la RM
+
+```{r}
+# Puntos geografícos de los colegios de la rm
+colegios_rm <- anio_2021 %>% 
+  filter(cod_reg_rbd == 13) %>% 
+  filter(!is.na(latitud) & !is.na(longitud)) %>% 
+  filter(longitud < -30) # sacar un dato extremo
+```
+
+**Tarea 6.4** Generar mapa con la ubicación de los colegios de la RM
+
+
+```{r}
+# Ubicación de los colegios en la región metropolitana
+ggplot(mapa_rm) +
+  geom_sf(aes(geometry = geometry)) +
+  geom_point(data = colegios_rm, aes(x = longitud, y = latitud), size = 0.8)
+
+```
+
+
+**Tarea 6.4** Generar un mapa que muestre el porcentaje de colegios con pago mayor a 100.000 pesos en la RM
+
+```{r}
+# Pago mensual 
+colegios_comuna <- anio_2021 %>% 
+  filter(cod_reg_rbd == 13) %>% 
+  filter( pago_mensual != "SIN INFORMACION" ) %>% 
+  group_by(cod_com_rbd, nom_com_rbd) %>% 
+  summarise(n_colegios = n()) %>% 
+  ungroup()
+
+pago_mensual <- anio_2021 %>% 
+  filter(cod_reg_rbd == 13) %>% 
+  filter( pago_mensual != "SIN INFORMACION" ) %>% 
+  group_by(cod_com_rbd, pago_mensual) %>% 
+  summarise(contar = n()) %>% 
+  ungroup() %>% 
+  left_join(colegios_comuna, by = "cod_com_rbd") %>% 
+  mutate(porcentaje = contar / n_colegios * 100)
+
+# Crear una tabla que contiene todos los tipos de pago para todas las comunas
+comunas <- pago_mensual %>% 
+  group_by(cod_com_rbd, nom_com_rbd) %>% 
+  slice(1) %>% 
+  ungroup() %>% 
+  mutate(cod_com_rbd = as.character(cod_com_rbd)) %>% 
+  select(cod_com_rbd, nom_com_rbd)
+
+#  Armar mapa con porcentaje de colegios que valen más de 100.000
+mapa_rm2 <- mapa_rm %>% 
+  left_join(pago_mensual %>% 
+              mutate(cod_com_rbd = as.character(cod_com_rbd)) %>% 
+              filter(pago_mensual == "MAS DE $100.000"),
+            by = c("codigo_comuna" = "cod_com_rbd")) %>% 
+  left_join(comunas, 
+            by = c("codigo_comuna" = "cod_com_rbd")) %>% # recuperar nombre de comunas que no tienen más de 100.000
+  mutate(porcentaje = if_else(is.na(porcentaje), 0, porcentaje), # pasar a 0 las comunas que no tienen más de 100.000
+         pago_mensual = if_else(is.na(pago_mensual), "MAS DE $100.000", pago_mensual),
+         comuna = nom_com_rbd.y
+         )   
+
+```
+
+
+
+```{r}
+
+ggplot(mapa_rm2) + 
+  geom_sf(aes(fill = porcentaje, geometry = geometry))
+```
+

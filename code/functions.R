@@ -8,8 +8,9 @@ get_url <- function(number) {
 
 # Descargar datos
 download_data <- function(url, file_name, relative_path) {
+
   file_directory <- paste0(relative_path, "/", file_name)
-  download.file(url,  file_directory)
+  curl_download(url,  file_directory)
 }
 
 
@@ -32,6 +33,28 @@ unrar <- function(file, folder_name = NULL) {
     system(unrar_command)  
   } 
 }
+
+
+
+unrar_windows <- function(file ) {
+  
+  folder_name <- paste0("data/bruto/", str_extract(file, pattern = "[[:digit:]]+"))
+  
+  
+  # Crear nueva carpeta y descomprimir si el archivo no existe
+  if ( !dir.exists(folder_name) ) {
+    dir.create(folder_name)
+}
+    
+    
+    unrar_command <- glue('"C:/Program Files/7-Zip/7z" e {file} -o{folder_name}')
+    
+    system(unrar_command)  
+  
+  
+} 
+
+
 
 
 # Función para editar nombre de archivos
